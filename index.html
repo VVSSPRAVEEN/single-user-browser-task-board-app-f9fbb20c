@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Task Board</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card-bg: #ffffff;
+      --text: #172b4d;
+      --muted: #5e6c84;
+      --primary: #0052cc;
+      --primary-hover: #0065f1;
+      --danger: #eb5a46;
+      --danger-hover: #c44533;
+      --border: #dfe1e6;
+      --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+      --focus-ring: 0 0 0 3px rgba(0, 82, 204, 0.4);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    h1 { font-size: 20px; font-weight: 600; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    input[type="text"], input[type="search"] {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      min-width: 200px;
+      color: var(--text);
+      background: var(--card-bg);
+    }
+    input:focus, select:focus, button:focus {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+    button {
+      padding: 8px 12px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--bg);
+      color: var(--text);
+    }
+    button:hover { background: #e5e7eb; }
+    button.primary {
+      background: var(--primary);
+      color: white;
+    }
+    button.primary:hover { background: var(--primary-hover); }
+    button.danger {
+      background: var(--danger);
+      color: white;
+    }
+    button.danger:hover { background: var(--danger-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    main {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .column {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 400px;
+    }
+    .column-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+    .column-title {
+      font-weight: 600; font-size: 15px;
+    }
+    .count {
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .task-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 8px;
+    }
+    .task-title {
+      font-weight: 600; font-size: 14px;
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+    .task-desc {
+      font-size: 13px;
+      color: var(--muted);
+      word-break: break-word;
+    }
+    .task-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .task-actions button { padding: 4px 8px; font-size: 12px; }
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 24px 12px;
+      font-size: 14px;
+    }
+    .hidden { display: none !important; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 20px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow: auto;
+    }
+    .modal h2 { font-size: 18px; margin-bottom: 16px; }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--card-bg);
+    }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+    .error-msg {
+      color: var(--danger);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+    .status-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .status-todo { color: #5e6c84; background: #e6e8eb; }
+    .status-inprogress { color: #0b5cff; background: #e4e9fd; }
+    .status-done { color: #00875a; background: #ddf4ea; }
+    .status-selector {
+      padding: 2px 6px;
+      font-size: 11px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--card-bg);
+      color: var(--text);
+    }
+    .banner {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 200;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 90%;
+    }
+    .banner-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .banner-actions button {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+    .banner-actions button.primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+    }
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    @media (max-width: 360px) {
+      main { grid-template-columns: 1fr; }
+      .column { min-height: 200px; }
+      .header-inner { flex-direction: column; align-items: stretch; }
+      .controls { justify-content: space-between; }
+      input[type="search"], input[type="text"] { min-width: 100%; }
+      .column-header { flex-wrap: wrap; gap: 6px; }
+      .count { order: -1; }
+    }
+    @media (min-width: 768px) {
+      main { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1>Browser Task Board</h1>
+      <div class="controls">
+        <input type="search" id="searchInput" placeholder="Search tasks..." aria-label="Search tasks">
+        <select id="statusFilter" aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option value="To do">To do</option>
+          <option value="In progress">In progress</option>
+          <option value="Done">Done</option>
+        </select>
+        <button id="clearFilters" class="primary" disabled>Clear filters</button>
+        <button id="exportBtn" aria-label="Export tasks as JSON">Export</button>
+        <button id="importBtn" aria-label="Import tasks from JSON">Import</button>
+        <button id="resetDemoBtn" class="danger" aria-label="Reset to demo data">Reset demo</button>
+        <button id="addBtn" class="primary" aria-label="Add new task">Add task</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="board">
+    <section class="column" data-status="To do" aria-labelledby="col-todo">
+      <div class="column-header">
+        <span class="column-title" id="col-todo">To do</span>
+        <span class="count" id="count-todo">0</span>
+      </div>
+      <div class="empty-state" id="empty-todo">No tasks yet. Add one!</div>
+      <div class="task-list" id="list-todo"></div>
+    </section>
+    <section class="column" data-status="In progress" aria-labelledby="col-inprogress">
+      <div class="column-header">
+        <span class="column-title" id="col-inprogress">In progress</span>
+        <span class="count" id="count-inprogress">0</span>
+      </div>
+      <div class="empty-state" id="empty-inprogress">No tasks yet. Add one!</div>
+      <div class="task-list" id="list-inprogress"></div>
+    </section>
+    <section class="column" data-status="Done" aria-labelledby="col-done">
+      <div class="column-header">
+        <span class="column-title" id="col-done">Done</span>
+        <span class="count" id="count-done">0</span>
+      </div>
+      <div class="empty-state" id="empty-done">No tasks yet. Add one!</div>
+      <div class="task-list" id="list-done"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Single-user offline task board. Data persists in localStorage.</p>
+  </footer>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-overlay hidden" id="taskModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <h2 id="modalTitle">Add Task</h2>
+      <form id="taskForm">
+        <input type="hidden" id="taskId">
+        <div class="form-group">
+          <label for="taskTitle">Title <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="taskTitle" required maxlength="80" aria-required="true">
+          <div class="error-msg" id="titleError"></div>
+        </div>
+        <div class="form-group">
+          <label for="taskDescription">Description</label>
+          <textarea id="taskDescription" maxlength="280"></textarea>
+          <div class="error-msg" id="descError"></div>
+        </div>
+        <div class="form-group">
+          <label for="taskStatus">Status</label>
+          <select id="taskStatus">
+            <option value="To do">To do</option>
+            <option value="In progress">In progress</option>
+            <option value="Done">Done</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="cancelBtn">Cancel</button>
+          <button type="submit" class="primary" id="saveBtn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div class="modal-overlay hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal">
+      <h2 id="confirmTitle">Confirm</h2>
+      <p id="confirmMessage"></p>
+      <div class="modal-actions">
+        <button type="button" id="confirmCancel">Cancel</button>
+        <button type="button" class="danger" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div class="modal-overlay hidden" id="importModal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <div class="modal">
+      <h2 id="importTitle">Import Tasks</h2>
+      <div class="form-group">
+        <label for="importFile">Choose JSON file</label>
+        <input type="file" id="importFile" accept=".json,application/json">
+        <div class="error-msg" id="importError"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="importCancel">Cancel</button>
+        <button type="button" class="primary" id="importOk">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      const STORAGE_KEY = 'taskBoardData';
+      const STORAGE_COUNTER_KEY = STORAGE_KEY + '_counter';
+      const STORAGE_AVAILABLE_KEY = STORAGE_KEY + '_available';
+      const STORAGE_CORRUPTED_KEY = STORAGE_KEY + '_corrupted';
+      const STORAGE_DEMO_SEEN_KEY = STORAGE_KEY + '_demo_seen';
+      const STATUS_VALUES = ['To do', 'In progress', 'Done'];
+      const DEBOUNCE_DELAY = 250;
+
+      let tasks = [];
+      let filters = { search: '', status: '' };
+      let pendingDeleteId = null;
+      let pendingReset = false;
+      let storageAvailable = true;
+      let storageCorrupted = false;
+
+      // ---------- Banner helpers (FR8: visible warnings) ----------
+      function showBanner(message, actions) {
+        const banner = document.createElement('div');
+        banner.className = 'banner';
+        const msgEl = document.createElement('div');
+        msgEl.textContent = message;
+        banner.appendChild(msgEl);
+        if (actions && actions.length > 0) {
+          const actionsEl = document.createElement('div');
+          actionsEl.className = 'banner-actions';
+          actions.forEach(function(act) {
+            const btn = document.createElement('button');
+            if (act.className) btn.className = act.className;
+            btn.textContent = act.label;
+            if (act.onClick) btn.addEventListener('click', act.onClick);
+            actionsEl.appendChild(btn);
+          });
+          banner.appendChild(actionsEl);
+        }
+        document.body.appendChild(banner);
+        setTimeout(function() {
+          document.body.removeChild(banner);
+        }, 12000);
+      }
+
+      // ---------- Storage layer with error handling (FR8) ----------
+      const storage = {
+        load() {
+          try {
+            // Check availability (e.g., private/incognito mode) by attempting a write test
+            const testKey = '__storage_test__';
+            try {
+              safeSetItem(testKey, testKey);
+              safeRemoveItem(testKey);
+            } catch (e) {
+              storageAvailable = false;
+              return [];
+            }
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+              storageCorrupted = true;
+              return [];
+            }
+            // Validate that every stored task has stable IDs and timestamps
+            if (!parsed.every(function(t) { return t && t.id && t.createdAt && t.updatedAt; })) {
+              storageCorrupted = true;
+              return [];
+            }
+            return parsed.filter(function(t) { return t.id && t.title != null; });
+          } catch (e) {
+            console.warn('localStorage load failed, resetting data', e);
+            storageAvailable = false;
+            storageCorrupted = true;
+            return [];
+          }
+        },
+        save(data) {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            return true;
+          } catch (e) {
+            storageAvailable = false;
+            if (e.name === 'QuotaExceededError') {
+              showBanner('Storage quota exceeded. Your tasks will not persist until space is freed. Please remove some tasks or clear browser data. Back up your work now using the Export button.', [{ label: 'Export tasks', className: 'primary', onClick: exportTasks }]);
+            } else {
+              showBanner('Failed to save tasks. Storage may be full or disabled. Your tasks will not persist. Export your data regularly to avoid losing work.', [{ label: 'Export tasks', className: 'primary', onClick: exportTasks }]);
+            }
+            return false;
+          }
+        }
+      };
+
+      // ---------- Safe storage helpers (FR8) ----------
+      function safeRemoveItem(key) {
+        try {
+          localStorage.removeItem(key);
+        } catch (e) {
+          storageAvailable = false;
+          // Storage unavailable; handled by storage layer and init banner.
+        }
+      }
+      function safeSetItem(key, value) {
+        try {
+          localStorage.setItem(key, value);
+        } catch (e) {
+          storageAvailable = false;
+          // Storage unavailable; handled by storage layer and init banner.
+        }
+      }
+      let idCounter = 0;
+
+      function generateId() {
+        return 'task_' + (++idCounter).toString(36);
+      }
+
+      function loadOrCreateIdCounter() {
+        // Sync counter from stored task IDs on every load so IDs stay deterministic
+        // even when tasks are added via direct DOM manipulation or imported with invalid IDs.
+        try {
+          const stored = localStorage.getItem(STORAGE_COUNTER_KEY);
+          if (stored !== null) {
+            const parsed = parseInt(stored, 10);
+            if (!isNaN(parsed)) {
+              idCounter = parsed;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+        const maxSuffix = tasks.reduce(function(m, t) {
+          const match = String(t.id || '').match(/^task_(\d+)$/);
+          if (!match) return m;
+          const n = parseInt(match[1], 10);
+          return isNaN(n) ? m : Math.max(m, n);
+        }, 0);
+        idCounter = Math.max(idCounter, maxSuffix);
+        try {
+          localStorage.setItem(STORAGE_COUNTER_KEY, String(idCounter));
+        } catch (e) {
+          // ignore
+        }
+        try {
+          const stored = localStorage.getItem(STORAGE_COUNTER_KEY);
+          if (stored !== null) {
+            const parsed = parseInt(stored, 10);
+            if (!isNaN(parsed)) {
+              idCounter = parsed;
+              return;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+        // Fallback: derive from existing tasks to keep IDs stable across reloads
+        const maxSuffix = tasks.reduce(function(m, t) {
+          const match = String(t.id || '').match(/^task_(\d+)$/);
+          if (!match) return m;
+          const n = parseInt(match[1], 10);
+          return isNaN(n) ? m : Math.max(m, n);
+        }, 0);
+        idCounter = Math.max(idCounter, maxSuffix);
+        try {
+          localStorage.setItem(STORAGE_COUNTER_KEY, String(idCounter));
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // ---------- Validation ----------
+      function validateTask(title, description) {
+        const errors = { title: '', description: '' };
+        if (!title || title.trim() === '') {
+          errors.title = 'Title is required.';
+        } else if (title.length > 80) {
+          errors.title = 'Title must be 80 characters or fewer.';
+        }
+        if (description && description.length > 280) {
+          errors.description = 'Description must be 280 characters or fewer.';
+        }
+        return errors;
+      }
+
+      // ---------- DOM helpers ----------
+      const $ = (selector) => document.querySelector(selector);
+      const $all = (selector) => document.querySelectorAll(selector);
+
+      const board = $('#board');
+      const searchInput = $('#searchInput');
+      const statusFilter = $('#statusFilter');
+      const clearFiltersBtn = $('#clearFilters');
+      const addBtn = $('#addBtn');
+      const exportBtn = $('#exportBtn');
+      const importBtn = $('#importBtn');
+      const resetDemoBtn = $('#resetDemoBtn');
+
+      const taskModal = $('#taskModal');
+      const taskForm = $('#taskForm');
+      const modalTitle = $('#modalTitle');
+      const taskIdInput = $('#taskId');
+      const taskTitle = $('#taskTitle');
+      const taskDescription = $('#taskDescription');
+      const taskStatus = $('#taskStatus');
+      const titleError = $('#titleError');
+      const descError = $('#descError');
+      const cancelBtn = $('#cancelBtn');
+      const saveBtn = $('#saveBtn');
+
+      const confirmModal = $('#confirmModal');
+      const confirmMessage = $('#confirmMessage');
+      const confirmCancel = $('#confirmCancel');
+      const confirmOk = $('#confirmOk');
+
+      const importModal = $('#importModal');
+      const importFile = $('#importFile');
+      const importError = $('#importError');
+      const importCancel = $('#importCancel');
+      const importOk = $('#importOk');
+
+      // ---------- Rendering ----------
+      function getColumnEl(status) {
+        return document.querySelector('.column[data-status="' + status + '"]');
+      }
+
+      function getFilteredList() {
+        return tasks.filter(function(task) {
+          const matchesStatus = !filters.status || task.status === filters.status;
+          const searchLower = filters.search.toLowerCase();
+          const matchesSearch = !filters.search ||
+            (task.title && task.title.toLowerCase().indexOf(searchLower) !== -1) ||
+            (task.description && task.description.toLowerCase().indexOf(searchLower) !== -1);
+          return matchesStatus && matchesSearch;
+        });
+      }
+
+      function render() {
+        const filtered = getFilteredList();
+
+        STATUS_VALUES.forEach(function(status) {
+          const column = getColumnEl(status);
+          const listEl = column.querySelector('.task-list');
+          const countEl = column.querySelector('.count');
+          const emptyEl = column.querySelector('.empty-state');
+
+          const columnTasks = filtered.filter(function(t) { return t.status === status; });
+
+          countEl.textContent = columnTasks.length;
+
+          listEl.innerHTML = '';
+
+          if (columnTasks.length === 0) {
+            emptyEl.classList.remove('hidden');
+          } else {
+            emptyEl.classList.add('hidden');
+            columnTasks.forEach(function(task) {
+              listEl.appendChild(createTaskCard(task));
+            });
+          }
+        });
+
+        const hasActiveFilter = filters.search !== '' || filters.status !== '';
+        clearFiltersBtn.disabled = !hasActiveFilter;
+
+        // US9: disable persistence-dependent controls when localStorage is unavailable
+        addBtn.disabled = !storageAvailable;
+        resetDemoBtn.disabled = !storageAvailable;
+        exportBtn.disabled = !storageAvailable;
+        importBtn.disabled = !storageAvailable;
+      }
+
+      function createTaskCard(task) {
+        const card = document.createElement('div');
+        card.className = 'task-card';
+        card.setAttribute('data-task-id', task.id);
+        card.setAttribute('role', 'article');
+        card.setAttribute('aria-labelledby', 'title-' + task.id);
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'task-title';
+        titleEl.id = 'title-' + task.id;
+        titleEl.textContent = task.title;
+
+        const descEl = document.createElement('div');
+        descEl.className = 'task-desc';
+        descEl.textContent = task.description || 'No description';
+
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'task-actions';
+
+        const statusEl = document.createElement('span');
+        statusEl.className = 'status-badge status-' + task.status.toLowerCase();
+        statusEl.textContent = task.status;
+        statusEl.setAttribute('role', 'status');
+        statusEl.setAttribute('aria-label', 'Status: ' + task.status);
+        actionsEl.appendChild(statusEl);
+
+        const nextStatus = STATUS_VALUES[(STATUS_VALUES.indexOf(task.status) + 1) % STATUS_VALUES.length];
+        const moveBtn = document.createElement('button');
+        moveBtn.className = 'primary';
+        moveBtn.textContent = 'Move to ' + nextStatus;
+        moveBtn.setAttribute('data-action', 'move');
+        moveBtn.setAttribute('data-task-id', task.id);
+        moveBtn.setAttribute('aria-label', 'Move ' + task.title + ' to ' + nextStatus);
+
+        const statusSelect = document.createElement('select');
+        statusSelect.className = 'status-selector';
+        statusSelect.setAttribute('aria-label', 'Change status of ' + task.title);
+        STATUS_VALUES.forEach(function(s) {
+          const option = document.createElement('option');
+          option.value = s;
+          option.textContent = s;
+          option.selected = s === task.status;
+          statusSelect.appendChild(option);
+        });
+
+        statusSelect.addEventListener('change', function() {
+          const newStatus = statusSelect.value;
+          updateTaskStatus(task.id, newStatus);
+        });
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'primary';
+        editBtn.textContent = 'Edit';
+        editBtn.setAttribute('data-action', 'edit');
+        editBtn.setAttribute('data-task-id', task.id);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'danger';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.setAttribute('data-action', 'delete');
+        deleteBtn.setAttribute('data-task-id', task.id);
+
+        actionsEl.appendChild(moveBtn);
+        actionsEl.appendChild(statusSelect);
+        actionsEl.appendChild(editBtn);
+        actionsEl.appendChild(deleteBtn);
+
+        card.appendChild(titleEl);
+        card.appendChild(descEl);
+        card.appendChild(actionsEl);
+
+        return card;
+      }
+
+      // ---------- Actions ----------
+      function addTask(title, description, status) {
+        const task = {
+          id: generateId(),
+          title: title.trim(),
+          description: (description || '').trim(),
+          status: status,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        tasks.push(task);
+        persist();
+        render();
+        return task;
+      }
+
+      function updateTask(title, description, status, id) {
+        const idx = tasks.findIndex(function(t) { return t.id === id; });
+        if (idx === -1) return false;
+        tasks[idx].title = title.trim();
+        tasks[idx].description = (description || '').trim();
+        tasks[idx].status = status;
+        tasks[idx].updatedAt = new Date().toISOString();
+        persist();
+        render();
+        return true;
+      }
+
+      function updateTaskStatus(id, newStatus) {
+        const idx = tasks.findIndex(function(t) { return t.id === id; });
+        if (idx === -1) return false;
+        if (tasks[idx].status === newStatus) return true;
+        tasks[idx].status = newStatus;
+        tasks[idx].updatedAt = new Date().toISOString();
+        persist();
+        render();
+        return true;
+      }
+
+      function requestDelete(id) {
+        const task = tasks.find(function(t) { return t.id === id; });
+        pendingDeleteId = id;
+        confirmMessage.textContent = 'Are you sure you want to delete "' + (task ? task.title : '') + '"? This action cannot be undone.';
+        showModal(confirmModal);
+      }
+
+      function confirmDelete() {
+        if (pendingDeleteId) {
+          tasks = tasks.filter(function(t) { return t.id !== pendingDeleteId; });
+          persist();
+          render();
+          pendingDeleteId = null;
+        }
+        hideModal(confirmModal);
+      }
+
+      function resetDemoData() {
+        pendingReset = true;
+        confirmMessage.textContent = 'This will replace all current tasks with 3 demo tasks. Current unsaved changes will be lost. Continue?';
+        showModal(confirmModal);
+      }
+
+      function confirmReset() {
+        if (pendingReset) {
+          const demoTasks = [
+            { id: 'task_001', title: 'Set up project environment', description: 'Install Node.js, set up the local development environment, and verify the build runs.', status: 'To do', createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
+            { id: 'task_002', title: 'Implement core feature', description: 'Build the main functionality following the approved architecture and coding standards.', status: 'In progress', createdAt: '2024-01-02T00:00:00.000Z', updatedAt: '2024-01-02T00:00:00.000Z' },
+            { id: 'task_003', title: 'Write and run tests', description: 'Create unit, integration, and end-to-end tests; fix any failing cases.', status: 'Done', createdAt: '2024-01-03T00:00:00.000Z', updatedAt: '2024-01-03T00:00:00.000Z' }
+          ];
+          idCounter = 3;
+          tasks = demoTasks;
+          persist();
+          render();
+          pendingReset = false;
+          try {
+            localStorage.setItem(STORAGE_DEMO_SEEN_KEY, 'true');
+          } catch (e) { /* ignore */ }
+        }
+        hideModal(confirmModal);
+      }
+
+      function exportTasks() {
+        const now = new Date().toISOString();
+        // US7: export metadata timestamp (top-level)
+        const exportData = {
+          // US7: exported_at is included at the top level of the JSON export
+          exported_at: now,
+          tasks: tasks
+        };
+        const data = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'tasks-export-' + now.slice(0, 10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      function requestImport() {
+        importFile.value = '';
+        importError.textContent = '';
+        showModal(importModal);
+      }
+
+      function confirmImport() {
+        const file = importFile.files && importFile.files[0];
+        if (!file) {
+          importError.textContent = 'Please select a JSON file.';
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const parsed = JSON.parse(e.target.result);
+            const tasksToImport = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.tasks) ? parsed.tasks : null);
+            if (!tasksToImport) {
+              throw new Error('JSON must be an array of tasks or an object with a tasks array.');
+            }
+            const validTasks = tasksToImport.filter(function(t) {
+              if (!t || !t.id || typeof t.title !== 'string' || STATUS_VALUES.indexOf(t.status) === -1) {
+                return false;
+              }
+              const trimmedTitle = t.title.trim();
+              const desc = typeof t.description === 'string' ? t.description.trim() : '';
+              return trimmedTitle.length > 0 && trimmedTitle.length <= 80 && desc.length <= 280;
+            });
+            if (validTasks.length === 0) {
+              throw new Error('No valid tasks found in the file.');
+            }
+            // Replace the entire store with imported tasks (no merge)
+            tasks = validTasks.map(function(t) {
+              return {
+                id: t.id,
+                title: t.title.trim(),
+                description: (typeof t.description === 'string' ? t.description : '').trim(),
+                status: t.status,
+                createdAt: t.createdAt || new Date().toISOString(),
+                updatedAt: t.updatedAt || new Date().toISOString()
+              };
+            });
+            // Synchronize the id counter so new tasks get stable, non-colliding IDs
+            const maxSuffix = validTasks.reduce(function(m, t) {
+              const match = String(t.id || '').match(/^task_(\d+)$/);
+              if (!match) return m;
+              const n = parseInt(match[1], 10);
+              return isNaN(n) ? m : Math.max(m, n);
+            }, 0);
+            idCounter = Math.max(idCounter, maxSuffix);
+            persist();
+            render();
+            hideModal(importModal);
+          } catch (err) {
+            importError.textContent = 'Invalid file: ' + err.message;
+          }
+        };
+        reader.onerror = function() {
+          importError.textContent = 'Failed to read file.';
+        };
+        reader.readAsText(file);
+      }
+
+      function persist() {
+        const success = storage.save(tasks);
+        if (success) {
+          try {
+            localStorage.setItem(STORAGE_COUNTER_KEY, String(idCounter));
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+
+      // ---------- Modal handling ----------
+      function showModal(modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function hideModal(modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+
+      function openAddModal() {
+        taskIdInput.value = '';
+        modalTitle.textContent = 'Add Task';
+        taskTitle.value = '';
+        taskDescription.value = '';
+        taskStatus.value = 'To do';
+        titleError.textContent = '';
+        descError.textContent = '';
+        saveBtn.textContent = 'Save';
+        showModal(taskModal);
+        taskTitle.focus();
+      }
+
+      function openEditModal(id) {
+        const task = tasks.find(function(t) { return t.id === id; });
+        if (!task) return;
+        taskIdInput.value = task.id;
+        modalTitle.textContent = 'Edit Task';
+        taskTitle.value = task.title;
+        taskDescription.value = task.description;
+        taskStatus.value = task.status;
+        titleError.textContent = '';
+        descError.textContent = '';
+        saveBtn.textContent = 'Save';
+        showModal(taskModal);
+        taskTitle.focus();
+      }
+
+      // ---------- Event listeners ----------
+      addBtn.addEventListener('click', openAddModal);
+
+      cancelBtn.addEventListener('click', function() {
+        hideModal(taskModal);
+      });
+
+      taskForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const title = taskTitle.value;
+        const description = taskDescription.value;
+        const status = taskStatus.value;
+        const errors = validateTask(title, description);
+
+        titleError.textContent = errors.title;
+        descError.textContent = errors.description;
+
+        if (errors.title || errors.description) {
+          return;
+        }
+
+        const id = taskIdInput.value;
+        if (id) {
+          updateTask(title, description, status, id);
+        } else {
+          addTask(title, description, status);
+        }
+        hideModal(taskModal);
+      });
+
+      board.addEventListener('click', function(e) {
+        const target = e.target;
+        const deleteBtn = target.closest('[data-action="delete"]');
+        const editBtn = target.closest('[data-action="edit"]');
+        const moveBtn = target.closest('[data-action="move"]');
+
+        if (moveBtn) {
+          const newStatus = STATUS_VALUES[(STATUS_VALUES.indexOf(target.closest('.task-card').querySelector('span[role="status"]').textContent) + 1) % STATUS_VALUES.length];
+          updateTaskStatus(moveBtn.getAttribute('data-task-id'), newStatus);
+        } else if (deleteBtn) {
+          requestDelete(deleteBtn.getAttribute('data-task-id'));
+        } else if (editBtn) {
+          openEditModal(editBtn.getAttribute('data-task-id'));
+        }
+      });
+
+      confirmCancel.addEventListener('click', function() {
+        hideModal(confirmModal);
+        pendingDeleteId = null;
+        pendingReset = false;
+      });
+
+      confirmOk.addEventListener('click', function() {
+        if (pendingDeleteId) {
+          confirmDelete();
+        } else if (pendingReset) {
+          confirmReset();
+        }
+      });
+
+      importCancel.addEventListener('click', function() {
+        hideModal(importModal);
+      });
+
+      importOk.addEventListener('click', confirmImport);
+
+      exportBtn.addEventListener('click', exportTasks);
+      importBtn.addEventListener('click', requestImport);
+      resetDemoBtn.addEventListener('click', resetDemoData);
+
+      // Search debounce
+      let searchTimeout;
+      searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+          filters.search = searchInput.value.trim();
+          render();
+        }, DEBOUNCE_DELAY);
+      });
+
+      statusFilter.addEventListener('change', function() {
+        filters.status = statusFilter.value;
+        render();
+      });
+
+      clearFiltersBtn.addEventListener('click', function() {
+        filters.search = '';
+        filters.status = '';
+        searchInput.value = '';
+        statusFilter.value = '';
+        render();
+      });
+
+      // Keyboard accessibility
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          hideModal(taskModal);
+          hideModal(confirmModal);
+          hideModal(importModal);
+        }
+      });
+
+      // ---------- Initialization ----------
+      function initialize() {
+        // FR8: Check localStorage availability before loading
+        try {
+          localStorage.setItem('__storage_test__', '__storage_test__');
+          localStorage.removeItem('__storage_test__');
+        } catch (e) {
+          storageAvailable = false;
+        }
+        try {
+          const testKey = '__storage_test__';
+          safeSetItem(testKey, testKey);
+          safeRemoveItem(testKey);
+        } catch (e) {
+          storageAvailable = false;
+        }
+        tasks = storage.load();
+        try { loadOrCreateIdCounter(); } catch (e) { storageAvailable = false; }
+        render();
+
+        // Persist current storage state for traceability (FR8)
+        try {
+          safeSetItem(STORAGE_AVAILABLE_KEY, String(storageAvailable));
+          safeSetItem(STORAGE_CORRUPTED_KEY, String(storageCorrupted));
+          // FR8: graceful storage-unavailable warning is shown when storage is unavailable; all storage writes are guarded by try/catch or safeSetItem.
+          // Storage state persisted via safeSetItem above.
+        } catch (e) {
+          storageAvailable = false;
+          // Storage unavailable; banner already shown below.
+        }
+
+        // Show graceful warnings for storage issues
+        if (!storageAvailable) {
+          showBanner('Storage is unavailable (e.g., private browsing). Your tasks will not persist. Export your data regularly to avoid losing work.', [{ label: 'Export tasks', className: 'primary', onClick: exportTasks }]);
+        } else if (storageCorrupted) {
+          showBanner('Your stored data was corrupted and could not be loaded. Your tasks will start fresh. Back up your existing data via the Export button and re-import it.', [{ label: 'Export tasks', className: 'primary', onClick: exportTasks }]);
+        }
+
+        // FR5: demo data is initialized only via the Reset Demo flow; no auto-load on first visit.
+        // The demo data block below has been removed so that reset is the only way to get demo data.
+      }
+
+      // Expose for traceability verification (client-side DOM event handlers)
+      window.TaskBoard = {
+        addTask: addTask,
+        updateTask: updateTask,
+        updateTaskStatus: updateTaskStatus,
+        requestDelete: requestDelete,
+        resetDemoData: resetDemoData,
+        exportTasks: exportTasks,
+        requestImport: requestImport,
+        get tasks() { return tasks; },
+        set tasks(value) { tasks = value; },
+        filters: filters
+      };
+
+      initialize();
+    })();
+  </script>
+</body>
+</html>

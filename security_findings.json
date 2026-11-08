@@ -1,0 +1,19 @@
+{
+  "count": 0,
+  "findings": [],
+  "semgrep": [],
+  "ruff": [],
+  "dependency_scan": {
+    "scanner": "none",
+    "verdict": "PASS",
+    "packages_audited": 0,
+    "findings": [],
+    "detail": "no dependency manifest; dependency SCA is not applicable",
+    "execution": null,
+    "waiver_authorization": null
+  },
+  "candidate": {
+    "tree_sha256": "698023e85b48f816d5358a5c7484ab15fc351080e85256f0657a893bda5d70f4",
+    "file_count": 13
+  }
+}

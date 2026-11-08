@@ -1,0 +1,6 @@
+{
+  "repository_kind": "application-source",
+  "project_name": "Single-User Browser Task Board",
+  "run_id": "f9fbb20c-e1a7-4d39-ad51-09adf562dfe5",
+  "note": "Application repository. Automated tests are retained here because CI must execute them."
+}
